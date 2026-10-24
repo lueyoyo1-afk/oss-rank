@@ -1,0 +1,67 @@
+{
+  "name": "OSS Rank · GitHub 开源软件实时榜单",
+  "short_name": "OSS榜",
+  "description": "GitHub 开源软件实时榜单：安卓 / Windows / iOS / macOS 应用 + AI Skill 技能分享，日榜 / 周榜 / 月榜 / 总榜 + 人工精选深评",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0c0b",
+  "theme_color": "#3ddc84",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "我的收藏",
+      "short_name": "收藏",
+      "url": "./index.html#src=fav",
+      "icons": [
+        {
+          "src": "./icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "安装记录",
+      "short_name": "记录",
+      "url": "./index.html#src=inst",
+      "icons": [
+        {
+          "src": "./icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Skill 分享",
+      "short_name": "Skill",
+      "url": "./index.html#src=skill",
+      "icons": [
+        {
+          "src": "./icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

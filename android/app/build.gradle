@@ -1,0 +1,55 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.ossrank.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.ossrank.app"
+        minSdk 24
+        targetSdk 34
+        versionCode 14
+        versionName "2.3"
+    }
+
+    signingConfigs {
+        // 固定调试签名：保证升级安装时不会被系统拒绝（换机也能覆盖安装）
+        release {
+            storeFile file('../keystore/ossrank.jks')
+            storePassword 'ossrank2026'
+            keyAlias 'ossrank'
+            keyPassword 'ossrank2026'
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ""
+        }
+        release {
+            minifyEnabled false
+            shrinkResources false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    packagingOptions {
+        resources.excludes += ['META-INF/*']
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+    implementation 'androidx.core:core:1.13.1'
+}
