@@ -41,3 +41,53 @@ git push -u origin main
 3. 回到应用粘贴 → 保存并验证
 
 额度从「搜索 10 次/分、接口 60 次/时」提升到「30 次/分、5000 次/时」。
+
+---
+
+## Supabase 更新通道（App 自更新发版流程）
+
+> ⚠️ **安全模型（2026-10-24 收紧后）**：存储桶 `app` 的匿名角色**只有读取权限**，
+> 写入（INSERT/UPDATE/DELETE）已全部撤销——防止任何拿到公开 publishable key 的人
+> 篡改 `version.json` 诱导用户下载恶意包。发版时按下面流程**临时开权限、传完立刻关**。
+
+### 发版步骤
+
+1. **临时开启写入**（Supabase Dashboard → SQL Editor 执行）：
+
+   ```sql
+   CREATE POLICY "app bucket temp write" ON storage.objects
+     FOR INSERT TO anon, authenticated WITH CHECK (bucket_id = 'app');
+   CREATE POLICY "app bucket temp update" ON storage.objects
+     FOR UPDATE TO anon, authenticated USING (bucket_id = 'app');
+   CREATE POLICY "app bucket temp delete" ON storage.objects
+     FOR DELETE TO anon, authenticated USING (bucket_id = 'app');
+   ```
+
+2. **上传**（`x-upsert` 已存在文件时需要；key 只放 `apikey` 头，不要放 Authorization）：
+
+   ```bash
+   KEY='sb_publishable_...'
+   # 新 APK
+   curl -X POST 'https://<项目>.supabase.co/storage/v1/object/app/OSSRank-vX.Y.apk' \
+     -H "apikey: $KEY" -H 'x-upsert: true' \
+     -H 'content-type: application/vnd.android.package-archive' \
+     --data-binary @app-release.apk
+   # 更新 version.json（versionCode/versionName/size/url/notes）
+   curl -X POST 'https://<项目>.supabase.co/storage/v1/object/app/version.json' \
+     -H "apikey: $KEY" -H 'x-upsert: true' -H 'content-type: application/json' \
+     --data-binary @version.json
+   # 网页版（content-type 必须大写 TEXT/HTML，小写会被网关改写成 text/plain）
+   curl -X POST 'https://<项目>.supabase.co/storage/v1/object/app/index.html' \
+     -H "apikey: $KEY" -H 'x-upsert: true' -H 'content-type: TEXT/HTML; charset=utf-8' \
+     --data-binary @index.html
+   ```
+
+3. **立刻关闭写入**：
+
+   ```sql
+   DROP POLICY IF EXISTS "app bucket temp write"  ON storage.objects;
+   DROP POLICY IF EXISTS "app bucket temp update" ON storage.objects;
+   DROP POLICY IF EXISTS "app bucket temp delete" ON storage.objects;
+   ```
+
+4. **验证**：匿名上传应返回 403；`/object/public/app/version.json` 应返回 200 新版本。
