@@ -1997,6 +1997,35 @@ function sparkHtml(key, name){
   return `<svg class="spark ${up?'up':'down'}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline points="${pts}"/><circle cx="${(pad+(vals.length-1)*step).toFixed(1)}" cy="${(h-pad-((vals[vals.length-1]-min)/span)*(h-pad*2)).toFixed(1)}" r="1.4"/></svg>`;
 }
 
+/* ================= 本机存储：写入自愈（v2.4.1）=================
+   真机上 localStorage 配额触顶后 setItem 会抛 QuotaExceededError，
+   而收藏 / 安装记录的写入曾把异常静默吞掉 → UI 假成功、数据没落盘。
+   ① 统一走 storeSetRaw：失败先清可再生缓存重试，仍失败返回 false；
+   ② 页面缓存加 FIFO 淘汰，防止 aoss:pg* / aoss:last* 无限膨胀。 */
+const PG_MAX = 24;   // 榜单页缓存（含 last 副本）最多保留的组合数
+function storeSetRaw(key, val){
+  try{ localStorage.setItem(key, val); return true; }catch(e){}
+  /* 空间不足：清掉全部可再生缓存（榜单页 / ETag / 趋势 / 搜索缓存），重试一次 */
+  try{
+    const kill = [];
+    for (let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      if (k && (k.indexOf('aoss:pg:') === 0 || k.indexOf('aoss:last:') === 0 ||
+                k.indexOf('aoss:etag:') === 0 || k === 'aoss:hist' ||
+                k.indexOf('aoss:search:') === 0 || k.indexOf('aoss:curated') === 0)) kill.push(k);
+    }
+    kill.forEach(k => localStorage.removeItem(k));
+  }catch(e){}
+  try{ localStorage.setItem(key, val); return true; }catch(e){ return false; }
+}
+let _storeWarnAt = 0;
+function storeFailToast(){
+  const now = Date.now();
+  if (now - _storeWarnAt < 8000) return;      // 节流，别连着弹
+  _storeWarnAt = now;
+  toast('本机存储空间不足，保存失败。已尝试清理缓存，请重试');
+}
+
 /* ================= 加载榜单 ================= */
 /* 详情类接口的 ETag 缓存：304 响应不计入 GitHub 限额，重复打开同一详情几乎零消耗 */
 const ETAG_MAX = 60, ETAG_TTL = 864e5;
@@ -2033,12 +2062,38 @@ function pageCacheGet(key, allowStale){
     return o;
   }catch(e){ return null; }
 }
-function pageCacheSet(key, items){
+function pgKeys(){
+  const arr = [];
   try{
-    const rec = JSON.stringify({t:Date.now(), d:items});
-    localStorage.setItem('aoss:'+key, rec);
-    localStorage.setItem('aoss:last:'+key, rec);   // 长期兜底副本
+    for (let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      if (k && (k.indexOf('aoss:pg:') === 0 || k.indexOf('aoss:last:pg:') === 0)) arr.push(k);
+    }
   }catch(e){}
+  return arr;
+}
+function pageCacheSet(key, items){
+  const rec = JSON.stringify({t:Date.now(), d:items});
+  /* FIFO 淘汰：榜单页缓存（含 last 副本）最多 PG_MAX 组，防 localStorage 无限膨胀触顶。
+     按组成对删除（主副本 + last 副本一起），避免两套副本失衡。 */
+  try{
+    const groups = {};
+    pgKeys().forEach(k => {
+      const g = k.indexOf('aoss:last:pg:') === 0
+        ? k.replace('aoss:last:pg:', 'aoss:pg:') : k;
+      let t = 0;
+      try{ t = (JSON.parse(localStorage.getItem(g)) || {}).t || 0; }catch(e){}
+      (groups[g] = groups[g] || {t, keys: []}).keys.push(k);
+    });
+    const names = Object.keys(groups);
+    if (names.length + 1 > PG_MAX){
+      names.sort((a, b) => groups[a].t - groups[b].t);
+      const excess = names.length + 1 - PG_MAX;
+      names.slice(0, excess).forEach(g => groups[g].keys.forEach(k => localStorage.removeItem(k)));
+    }
+  }catch(e){}
+  if (!storeSetRaw('aoss:'+key, rec)) storeFailToast();          // 主副本
+  if (!storeSetRaw('aoss:last:'+key, rec)) {}                    // 兜底副本，失败不提示
 }
 function lastGoodGet(key){
   try{
@@ -2613,8 +2668,8 @@ function renderCurated(){
 const acqStore = {
   all(){ try{ return JSON.parse(localStorage.getItem('aoss:acq')||'{}'); }catch(e){ return {}; } },
   get(n){ return acqStore.all()[n] || null; },
-  set(n, rec){ const o = acqStore.all(); o[n] = rec; try{ localStorage.setItem('aoss:acq', JSON.stringify(o)); }catch(e){} scheduleAutoSync(); },
-  remove(n){ const o = acqStore.all(); delete o[n]; try{ localStorage.setItem('aoss:acq', JSON.stringify(o)); }catch(e){} scheduleAutoSync(); },
+  set(n, rec){ const o = acqStore.all(); o[n] = rec; if (!storeSetRaw('aoss:acq', JSON.stringify(o))) storeFailToast(); scheduleAutoSync(); },
+  remove(n){ const o = acqStore.all(); delete o[n]; if (!storeSetRaw('aoss:acq', JSON.stringify(o))) storeFailToast(); scheduleAutoSync(); },
 };
 /* ================= 应用自更新 ================= */
 /* 版本清单托管在 Supabase Storage；发新版只需替换 version.json 与 apk */
@@ -4093,13 +4148,14 @@ const favStore = {
   add(n, cat, it){
     const o = favStore.all();
     o[n] = {c:cat||'其他', t:Date.now(), it:{n:it.n, s:it.s, l:it.l, p:it.p, a:it.a, d:it.d, z:it.z, u:it.u}};
-    try{ localStorage.setItem('aoss:fav', JSON.stringify(o)); }catch(e){}
+    if (!storeSetRaw('aoss:fav', JSON.stringify(o))){ storeFailToast(); return false; }
+    return true;
   },
-  set(n, rec){ const o = favStore.all(); o[n] = rec; try{ localStorage.setItem('aoss:fav', JSON.stringify(o)); }catch(e){} scheduleAutoSync(); },
-  remove(n){ const o = favStore.all(); delete o[n]; try{ localStorage.setItem('aoss:fav', JSON.stringify(o)); }catch(e){} scheduleAutoSync(); },
+  set(n, rec){ const o = favStore.all(); o[n] = rec; if (!storeSetRaw('aoss:fav', JSON.stringify(o))) storeFailToast(); scheduleAutoSync(); },
+  remove(n){ const o = favStore.all(); delete o[n]; if (!storeSetRaw('aoss:fav', JSON.stringify(o))) storeFailToast(); scheduleAutoSync(); },
   toggle(n, cat, it){
     if (favStore.has(n)){ favStore.remove(n); return false; }
-    favStore.add(n, cat, it); return true;
+    return favStore.add(n, cat, it) ? true : false;   // 写入失败 → 按未收藏处理，不再假成功
   },
 };
 /* 收藏分类：优先沿用仓库已有的分类（精选 / Skill 深评），否则归到当前来源（平台名 / Skill 分享） */
@@ -4131,7 +4187,7 @@ function renderFav(){
   $('#status').innerHTML = `<div class="statusbar"><span><b>共 ${entries.length} 个收藏</b> · ${cats.length} 个分类</span><span>收藏记录保存在本机</span></div>`;
   if (!entries.length){
     if (q) { el.innerHTML = emptyStateHtml('没有匹配的收藏', [{id:'clear-q', label:'清空搜索'}]); return; }
-    el.innerHTML = `<div class="empty"><span class="big">${ICONS.star}</span>还没有收藏<br>在项目详情里点「收藏」，即可按分类收纳到这里</div>`;
+    el.innerHTML = `<div class="empty"><span class="big">${ICONS.star}</span>还没有收藏<br>在项目详情里点「收藏」，即可按分类收纳到这里<br><small style="color:var(--faint);font-size:11px">App 与网页版数据各自独立 · 可在「排序 → 云同步」备份打通</small></div>`;
     return;
   }
   let html = '';
@@ -4166,7 +4222,7 @@ function renderInst(){
   $('#status').innerHTML = `<div class="statusbar"><span><b>共 ${entries.length} 个安装记录</b></span><span>记录保存在本机 · 详情里点「获取」即自动收录</span></div>`;
   if (!entries.length){
     if (q){ el.innerHTML = emptyStateHtml('没有匹配的安装记录', [{id:'clear-q', label:'清空搜索'}]); return; }
-    el.innerHTML = `<div class="empty"><span class="big">${ICONS.download}</span>还没有安装记录<br>在项目详情里点「获取」下载后，会自动收录到这里</div>`;
+    el.innerHTML = `<div class="empty"><span class="big">${ICONS.download}</span>还没有安装记录<br>在项目详情里点「获取」下载后，会自动收录到这里<br><small style="color:var(--faint);font-size:11px">App 与网页版数据各自独立 · 可在「排序 → 云同步」备份打通</small></div>`;
     return;
   }
   const sp = instSpaceInfo(entries);
