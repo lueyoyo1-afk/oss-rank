@@ -3,6 +3,7 @@ package com.ossrank.app;
 import android.Manifest;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -23,6 +24,7 @@ import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
+import android.webkit.ValueCallback;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -73,6 +75,8 @@ public class MainActivity extends Activity {
     private int lastTop = -1, lastBottom = -1;
     private long lastBack = 0;
     private String pendingRepo = null;      // 分享链接带进来的 owner/repo，等页面就绪再打开
+    private ValueCallback<Uri[]> filePickCb; // 网页 <input type=file> 的回调（反馈卡片选图）
+    private static final int REQ_FILE_PICK = 9091;
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -198,7 +202,27 @@ public class MainActivity extends Activity {
             }
         });
 
-        web.setWebChromeClient(new WebChromeClient());
+        web.setWebChromeClient(new WebChromeClient() {
+            /** 网页里 <input type=file>（如反馈卡片选图）：拉起系统相册/文件选择器 */
+            @Override
+            public boolean onShowFileChooser(WebView w, ValueCallback<Uri[]> cb,
+                                             FileChooserParams params) {
+                if (filePickCb != null) { filePickCb.onReceiveValue(null); }
+                filePickCb = cb;
+                try {
+                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("image/*");
+                    i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);   // 反馈最多 6 张，一次可多选
+                    startActivityForResult(Intent.createChooser(i, "选择图片"), REQ_FILE_PICK);
+                } catch (ActivityNotFoundException e) {
+                    filePickCb = null;
+                    toast("没有可用的相册 / 文件选择器");
+                    return false;
+                }
+                return true;
+            }
+        });
         web.addJavascriptInterface(new Bridge(), "OssRankNative");
 
         // 兜底：页面没走 JS 桥时，链接触发的下载也交给原生
@@ -417,6 +441,28 @@ public class MainActivity extends Activity {
         handleInstall(intent);
         handleView(intent);
         handleOpenUpdate(intent);
+    }
+
+    /** 文件选择器结果回传给网页（多选时逐条展开 ClipData） */
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        if (req == REQ_FILE_PICK && filePickCb != null) {
+            Uri[] arr = null;
+            if (res == RESULT_OK && data != null) {
+                if (data.getClipData() != null) {                     // 多选
+                    ClipData clip = data.getClipData();
+                    int n = Math.min(clip.getItemCount(), 6);
+                    arr = new Uri[n];
+                    for (int i = 0; i < n; i++) arr[i] = clip.getItemAt(i).getUri();
+                } else if (data.getData() != null) {                  // 单选
+                    arr = new Uri[]{data.getData()};
+                }
+            }
+            filePickCb.onReceiveValue(arr);
+            filePickCb = null;
+            return;
+        }
+        super.onActivityResult(req, res, data);
     }
 
     @Override
