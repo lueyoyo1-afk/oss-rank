@@ -1049,6 +1049,18 @@ mark.kw{background:var(--accent-soft);color:var(--accent);border-radius:3px;padd
   <button class="d-item" data-sort="rising" role="option">
     <span class="ic"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-7"/><path d="M20 8v5h-5"/></svg></span><span class="tx"><b>按涨星速度</b><small>较上次访问的星标涨幅（飙升榜）</small></span><span class="ck" data-ck="1"></span>
   </button>
+  <div class="d-group">更多</div>
+  <button class="d-item" id="setEntry" role="button">
+    <span class="ic" data-ic="themeAuto"></span><span class="tx"><b>设置</b><small>外观主题 · 云同步 · 备份导出 · 关于</small></span><span class="ck"></span>
+  </button>
+</div>
+
+<!-- 设置面板：外观 / 数据 / 关于 -->
+<div class="sheet" id="setSheet" role="dialog" aria-label="设置">
+  <div class="d-head">
+    <span class="d-title">设置</span>
+    <button class="d-close" id="setSheetClose" title="关闭"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
   <div class="d-group">外观</div>
   <button class="d-item" data-theme="auto" role="option">
     <span class="ic" data-ic="themeAuto"></span><span class="tx"><b>跟随系统</b><small>随手机 / 电脑的深浅色设置</small></span><span class="ck" data-ck="1"></span>
@@ -1079,6 +1091,13 @@ mark.kw{background:var(--accent-soft);color:var(--accent);border-radius:3px;padd
     <input type="file" id="restoreFile" accept="application/json,.json" hidden>
     <div style="color:var(--faint);font-size:10.5px;line-height:1.6;padding:2px 2px 0">
       备份只含本机收藏 / 安装记录（不含榜单缓存）；恢复时按仓库名合并，同一仓库保留较新的那条。
+    </div>
+  </div>
+  <div class="d-group">关于</div>
+  <div class="d-foot" style="display:flex;flex-direction:column;gap:8px;align-items:center">
+    <button class="btn" id="aboutBtn" style="width:100%;justify-content:center">数据说明与口径</button>
+    <div style="color:var(--faint);font-size:10.5px;line-height:1.7;text-align:center">
+      OSS Rank · 单文件 PWA · 数据 © 各仓库作者<br>榜单排序不代表质量排名
     </div>
   </div>
 </div>
@@ -1191,9 +1210,9 @@ mark.kw{background:var(--accent-soft);color:var(--accent);border-radius:3px;padd
   <div class="updbar" id="updBar" hidden><span>有新版本可用</span><button id="updBtn">刷新</button></div>
   <div id="status"></div>
   <main class="list" id="list"></main>
-  <div class="foot">
-    <button class="btn about-btn" id="aboutBtn">数据说明与口径</button>
-    <div class="credit">OSS Rank · 单文件 PWA · 数据 © 各仓库作者 · 榜单排序不代表质量排名</div>
+  <div class="foot" style="padding:10px 0 4px">
+    <button class="btn about-btn" id="aboutFoot" title="打开 设置 → 关于" style="font-size:11px;color:var(--faint);border-color:transparent;background:none">数据说明与口径 · 关于</button>
+    <div class="credit" style="font-size:10px">数据 © 各仓库作者 · 榜单排序不代表质量排名</div>
   </div>
 </div>
 
@@ -2430,6 +2449,20 @@ function closeSortSheet(){
   syncBodyLock();
 }
 
+/* 设置面板（外观 / 数据 / 关于） */
+function openSetSheet(){
+  if ($('#drawer').classList.contains('open')) closeDrawer();
+  if ($('#sortSheet').classList.contains('open')) closeSortSheet();
+  $('#setSheet').classList.add('open');
+  $('#backdrop').classList.add('open');
+  syncBodyLock();
+}
+function closeSetSheet(){
+  $('#setSheet').classList.remove('open');
+  if (!$('#drawer').classList.contains('open') && !$('#sortSheet').classList.contains('open')) $('#backdrop').classList.remove('open');
+  syncBodyLock();
+}
+
 /* 抽屉开关 */
 function openDrawer(){
   if ($('#sortSheet').classList.contains('open')) closeSortSheet();
@@ -2456,6 +2489,7 @@ function syncBodyLock(){
     || $('#updSheet').classList.contains('open')
     || $('#syncSheet').classList.contains('open')
     || $('#logSheet').classList.contains('open')
+    || $('#setSheet').classList.contains('open')
     || $('#ghSheet').classList.contains('open');
   document.body.style.overflow = locked ? 'hidden' : '';
 }
@@ -2998,6 +3032,9 @@ async function verifyUpdApk(){
 /* ================= 更新日志（⑤）=================
    静态内嵌：离线可用、不依赖网络。发新版时在这里加一条即可。 */
 const CHANGELOG = [
+  { v:'2.4.4', code:19, date:'2026-10-25', items:[
+    '<b>界面重组</b>：外观 / 数据 / 关于 汇入独立「设置」面板（排序面板 → 设置），列表底部更清爽',
+  ]},
   { v:'2.4.3', code:18, date:'2026-10-25', items:[
     '<b>修复</b>：反馈卡片无法从相册添加图片（App 壳补上文件选择器支持）',
     '<b>新增</b>：启动加载动画（星标呼吸 + 进度条）；发送反馈加转圈动画',
@@ -3054,13 +3091,14 @@ function renderLog(){
 function openLogSheet(){
   if ($('#drawer').classList.contains('open')) closeDrawer();
   if ($('#sortSheet').classList.contains('open')) closeSortSheet();
+  if ($('#setSheet').classList.contains('open')) closeSetSheet();
   $('#logSheet').classList.add('open');
   $('#backdrop').classList.add('open');
   syncBodyLock();
 }
 function closeLogSheet(){
   $('#logSheet').classList.remove('open');
-  if (!$('#drawer').classList.contains('open') && !$('#sortSheet').classList.contains('open')) $('#backdrop').classList.remove('open');
+  if (!$('#drawer').classList.contains('open') && !$('#sortSheet').classList.contains('open') && !$('#setSheet').classList.contains('open')) $('#backdrop').classList.remove('open');
   syncBodyLock();
 }
 
@@ -3195,6 +3233,7 @@ function renderSyncState(){
 function openSyncSheet(){
   if ($('#drawer').classList.contains('open')) closeDrawer();
   if ($('#sortSheet').classList.contains('open')) closeSortSheet();
+  if ($('#setSheet').classList.contains('open')) closeSetSheet();
   renderSyncState();
   $('#syncSheet').classList.add('open');
   $('#backdrop').classList.add('open');
@@ -3202,7 +3241,7 @@ function openSyncSheet(){
 }
 function closeSyncSheet(){
   $('#syncSheet').classList.remove('open');
-  if (!$('#drawer').classList.contains('open') && !$('#sortSheet').classList.contains('open')) $('#backdrop').classList.remove('open');
+  if (!$('#drawer').classList.contains('open') && !$('#sortSheet').classList.contains('open') && !$('#setSheet').classList.contains('open')) $('#backdrop').classList.remove('open');
   syncBodyLock();
 }
 
@@ -4719,7 +4758,7 @@ function applyTheme(v){
       window.OssRankNative.setBackground(dark ? '#0a0c0b' : '#f5f7f6'); // 边缘/回弹不露黑底
     }catch(e){}
   }
-  document.querySelectorAll('#sortSheet [data-theme]').forEach(b=>b.classList.toggle('active', b.dataset.theme===v));
+  document.querySelectorAll('#setSheet [data-theme]').forEach(b=>b.classList.toggle('active', b.dataset.theme===v));
 }
 /* 系统深浅色变化时：auto 模式下同步 meta 主题色 */
 try{
@@ -4748,6 +4787,7 @@ window.__ossBack = function(){
     if ($('#updSheet').classList.contains('open')){ closeUpdSheet(); return true; }
     if ($('#syncSheet').classList.contains('open')){ closeSyncSheet(); return true; }
     if ($('#logSheet').classList.contains('open')){ closeLogSheet(); return true; }
+    if ($('#setSheet').classList.contains('open')){ closeSetSheet(); return true; }
   }catch(e){}
   return false;
 };
@@ -5114,11 +5154,11 @@ function bindUI(){
     closeSortSheet();
   });
   /* 外观：浅色 / 深色 / 跟随系统（选完不关面板，方便看到勾选变化） */
-  $('.sheet').querySelectorAll('[data-theme]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('[data-theme]').forEach(b=>b.onclick=()=>{
     applyTheme(b.dataset.theme);
   });
-  $('#exportBtn').addEventListener('click', ()=>{ exportMarkdown(); closeSortSheet(); });
-  $('#backupBtn').addEventListener('click', ()=>{ exportBackup(); closeSortSheet(); });
+  $('#exportBtn').addEventListener('click', ()=>{ exportMarkdown(); closeSetSheet(); });
+  $('#backupBtn').addEventListener('click', ()=>{ exportBackup(); closeSetSheet(); });
   $('#syncBtn').addEventListener('click', openSyncSheet);
   $('#logBtn').addEventListener('click', ()=>{ renderLog(); openLogSheet(); });
   /* ---- GitHub 登录 ---- */
@@ -5159,7 +5199,7 @@ function bindUI(){
     const f = e.target.files && e.target.files[0];
     if (f) importBackup(f);
     e.target.value = '';
-    closeSortSheet();
+    closeSetSheet();
   });
   /* 云同步面板 */
   $('#syncClose').addEventListener('click', closeSyncSheet);
@@ -5168,6 +5208,16 @@ function bindUI(){
   $('#syncAuto').addEventListener('change', e=>{
     syncCfgSet({ auto: e.target.checked });
     if (e.target.checked){ scheduleAutoSync(); toast('自动同步已开启：数据变化后自动上传'); }
+  });
+  /* 设置面板（外观 / 数据 / 关于） */
+  $('#setEntry').addEventListener('click', openSetSheet);
+  $('#setSheetClose').addEventListener('click', closeSetSheet);
+  $('#aboutFoot').addEventListener('click', ()=>{
+    openSetSheet();
+    setTimeout(() => {
+      const g = $('#setSheet .d-group:last-of-type');
+      if (g) g.scrollIntoView({ block: 'nearest' });
+    }, 150);
   });
   /* 反馈 · 报 Bug（点空白不关闭，仅 ✕ 可关——按需求，backdrop 不绑关闭） */
   $('#fbEntry').addEventListener('click', openFb);
@@ -5201,6 +5251,7 @@ function bindUI(){
   $('#backdrop').addEventListener('click', ()=>{
     if ($('#drawer').classList.contains('open')) closeDrawer();
     else if ($('#sortSheet').classList.contains('open')) closeSortSheet();
+    else if ($('#setSheet').classList.contains('open')) closeSetSheet();
     else if ($('#ghSheet').classList.contains('open')) closeGhSheet();
     else if ($('#updSheet').classList.contains('open')) closeUpdSheet();
     else if ($('#syncSheet').classList.contains('open')) closeSyncSheet();
