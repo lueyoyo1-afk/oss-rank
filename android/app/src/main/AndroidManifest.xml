@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- 读取已安装应用列表：用仓库名反查手机上是否已装过（自用分发，不上架商店） -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
@@ -44,6 +45,15 @@
             android:name=".DownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- 每日更新检查：开机 / 升级后重新注册闹钟；到点后台拉 version.json 发提醒 -->
+        <receiver android:name=".BootReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+        <receiver android:name=".UpdateCheckReceiver" android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

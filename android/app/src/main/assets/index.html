@@ -784,6 +784,39 @@ button.lnk{font:inherit;cursor:pointer;border:0;text-align:left}
 #ghEntryState.on{color:var(--accent)}
 #ghSheet .d-title{color:var(--dim);letter-spacing:1.6px}
 
+/* ---------- 云同步（Gist） ---------- */
+.sync-tip{font-size:12px;color:var(--dim);line-height:1.75;margin:0}
+.sync-row{display:flex;gap:8px;margin-top:12px}
+.sync-row .btn{flex:1;justify-content:center;padding:11px 12px;font-size:12px;border-radius:9px}
+.sync-row #syncUp{border-color:transparent;background:var(--accent);color:var(--on-accent);font-weight:700}
+.sync-row #syncUp:hover{color:var(--on-accent);border-color:transparent;filter:brightness(1.06)}
+.sync-st{font-size:11.5px;color:var(--faint);margin:9px 0 0;font-family:var(--mono);word-break:break-all;min-height:15px}
+.sync-st.err{color:var(--danger)}
+.sync-st.ok{color:var(--accent)}
+.sync-help{font-size:11px;color:var(--faint);line-height:1.75;margin-top:12px;border-top:1px dashed var(--line);padding-top:11px}
+.sync-help a{color:var(--accent);text-decoration:none}
+#syncSheet .d-title{color:var(--dim);letter-spacing:1.6px}
+#syncAutoWrap{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:var(--dim)}
+
+/* ---------- 更新日志 ---------- */
+.log-item{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:12px 13px;margin-bottom:10px}
+.log-item.cur{border-color:var(--accent-line);background:var(--accent-soft)}
+.log-head{display:flex;align-items:baseline;gap:8px;margin-bottom:7px}
+.log-head b{font-family:var(--disp);font-size:15px;letter-spacing:.4px}
+.log-head time{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-left:auto;flex:none}
+.log-cur{font-family:var(--mono);font-size:10px;color:var(--on-accent);background:var(--accent);border-radius:999px;padding:2px 8px;flex:none}
+.log-item ul{margin:0;padding-left:17px}
+.log-item li{font-size:12px;color:var(--dim);line-height:1.8}
+.log-item li b{color:var(--text)}
+#logSheet .d-title{color:var(--dim);letter-spacing:1.6px}
+
+/* ---------- APK 完整性校验行 ---------- */
+.upd-verify{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;
+  color:var(--faint);margin:2px 0 10px;padding:7px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--line)}
+.upd-verify.ok{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+.upd-verify.fail{color:var(--danger);border-color:var(--danger)}
+.upd-verify .vk{flex:none;font-weight:700}
+
 /* ---------- 应用更新按钮（有更新时高亮） ---------- */
 #updCheck{position:relative;transition:background .18s,color .18s,border-color .18s}
 #updCheck.has-upd{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
@@ -952,6 +985,12 @@ mark.kw{background:var(--accent-soft);color:var(--accent);border-radius:3px;padd
   </button>
   <div class="d-group">数据</div>
   <div class="d-foot" style="display:flex;flex-direction:column;gap:8px">
+    <button class="btn" id="syncBtn" style="width:100%;justify-content:center" title="把收藏 / 安装记录同步到 GitHub 私密 Gist">
+      <span class="sic" data-ic="cloud"></span>云同步（Gist）
+    </button>
+    <button class="btn" id="logBtn" style="width:100%;justify-content:center" title="查看历次版本更新内容">
+      <span class="sic" data-ic="clock"></span>更新日志
+    </button>
     <button class="btn" id="exportBtn" style="width:100%;justify-content:center" title="把当前榜单导出为 Markdown 表格并复制到剪贴板">
       <span class="sic" data-ic="export"></span>导出榜单 Markdown
     </button>
@@ -1028,6 +1067,41 @@ mark.kw{background:var(--accent-soft);color:var(--accent);border-radius:3px;padd
         权限只勾 <b>Public repositories (read-only)</b> 即可。Token 只保存在本机 localStorage，不上传任何服务器，可随时在 GitHub 撤销。
       </div>
     </div>
+  </div>
+
+  <!-- 云同步（GitHub 私密 Gist） -->
+  <div class="sheet" id="syncSheet" role="dialog" aria-label="云同步">
+    <div class="d-head">
+      <span class="d-title">云同步</span>
+      <button class="d-close" id="syncClose" title="关闭"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div style="padding:0">
+      <p class="sync-tip">把<b>收藏</b>与<b>安装记录</b>同步到一个<b>私密 Gist</b>：换手机、清数据前备份、多设备保持一致。首次同步自动创建，之后增量覆盖。合并策略与本地备份一致——同一仓库保留较新的一条。</p>
+      <div class="sync-row">
+        <button class="btn" id="syncUp">上传到云端</button>
+        <button class="btn" id="syncDown">从云端恢复</button>
+      </div>
+      <div id="syncAutoWrap">
+        <label class="tgl" title="收藏 / 安装记录有变化时，静默自动上传（约 30 秒防抖）">
+          <input type="checkbox" id="syncAuto"><span class="sw"></span>自动同步
+        </label>
+      </div>
+      <p class="sync-st" id="syncMsg"></p>
+      <div class="sync-help">
+        Token 复用「GitHub 登录」里保存的 Token（只存本机）。注意：<b>细粒度 Token 无法访问 Gist</b>，若报 403/404，请到
+        <a href="https://github.com/settings/tokens" target="_blank" rel="noopener">Settings → Developer settings → Personal access tokens (classic)</a>
+        新建一个只勾 <b>gist</b> 权限的经典 Token。Gist 为私密（secret），仅持 Token 者可读写。
+      </div>
+    </div>
+  </div>
+
+  <!-- 更新日志 -->
+  <div class="sheet" id="logSheet" role="dialog" aria-label="更新日志">
+    <div class="d-head">
+      <span class="d-title">更新日志</span>
+      <button class="d-close" id="logClose" title="关闭"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div id="logBody" style="padding:2px 2px 4px"></div>
   </div>
 
   <!-- 首访引导（仅第一次显示，点「知道了」或任意处消失；占位不遮挡列表） -->
@@ -1579,6 +1653,7 @@ const ICONS = {
   themeAuto: SVG_OPEN+'<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17" fill="currentColor"/>'+SVG_CLOSE,
   export: SVG_OPEN+'<path d="M12 14.5V3.5"/><path d="M7.5 8 12 3.5 16.5 8"/><path d="M4.5 14v4.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V14"/>'+SVG_CLOSE,
   trash: SVG_OPEN+'<path d="M4.5 6.5h15"/><path d="M9.5 6V4.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V6"/><path d="M6.5 6.5 7.4 20a1 1 0 0 0 1 .9h7.2a1 1 0 0 0 1-.9l.9-13.5"/><path d="M10.5 10v7M13.5 10v7"/>'+SVG_CLOSE,
+  cloud: SVG_OPEN+'<path d="M7.5 18.5h9.8a4.2 4.2 0 0 0 .6-8.37A5.8 5.8 0 0 0 6.6 9.9a3.9 3.9 0 0 0 .9 8.6z"/><path d="M12 15.5v-5"/><path d="m9.7 12.8 2.3-2.3 2.3 2.3"/>'+SVG_CLOSE,
 };
 /* 把 SVG 图标注入静态占位（抽屉 / 排序面板 / 勾选态） */
 function injectIcons(){
@@ -2218,7 +2293,11 @@ function syncBodyLock(){
   const locked = $('#drawer').classList.contains('open')
     || $('#sortSheet').classList.contains('open')
     || $('#modal').classList.contains('open')
-    || $('#ctxSheet').classList.contains('open');
+    || $('#ctxSheet').classList.contains('open')
+    || $('#updSheet').classList.contains('open')
+    || $('#syncSheet').classList.contains('open')
+    || $('#logSheet').classList.contains('open')
+    || $('#ghSheet').classList.contains('open');
   document.body.style.overflow = locked ? 'hidden' : '';
 }
 
@@ -2360,9 +2439,30 @@ function qhDel(q){ qhSave(qhAll().filter(x => x !== q)); }
 function renderQh(){
   const box = $('#qHist');
   if (!box) return;
-  const typed = ($('#q') && $('#q').value || '').trim();
+  const typed = ($('#q') && $('#q').value || '').trim().toLowerCase();
   const list = qhAll();
-  if (typed || !list.length){ box.hidden = true; return; }
+  if (typed){
+    /* 输入中：历史记录 + 当前榜单仓库名，双重匹配做补全 */
+    const hist = list.filter(t => t.toLowerCase() !== typed && t.toLowerCase().includes(typed)).slice(0, 5);
+    const repos = (state.items || [])
+      .map(it => it.n)
+      .filter(n => n.toLowerCase().includes(typed) && !hist.includes(n))
+      .slice(0, 4);
+    if (!hist.length && !repos.length){ box.hidden = true; return; }
+    const row = (label, val, star) =>
+        `<button class="qh" data-q="${esc(val)}">`
+      + `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">`
+      + (star ? '<path d="m12 3.2 2.7 5.5 6.1.9-4.4 4.3 1 6-5.4-2.8-5.4 2.8 1-6-4.4-4.3 6.1-.9L12 3.2z"/>'
+              : '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>')
+      + `</svg><span>${esc(val)}</span><i>${label}</i></button>`;
+    box.innerHTML =
+        hist.map(t => row('历史', t, false)).join('')
+      + repos.map(n => row('补全', n, true)).join('')
+      + `<div class="qh-foot"><span>历史与补全</span></div>`;
+    box.hidden = false;
+    return;
+  }
+  if (!list.length){ box.hidden = true; return; }
   box.innerHTML = list.map(t =>
       `<button class="qh" data-q="${esc(t)}">`
     + `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>`
@@ -2513,14 +2613,14 @@ function renderCurated(){
 const acqStore = {
   all(){ try{ return JSON.parse(localStorage.getItem('aoss:acq')||'{}'); }catch(e){ return {}; } },
   get(n){ return acqStore.all()[n] || null; },
-  set(n, rec){ const o = acqStore.all(); o[n] = rec; try{ localStorage.setItem('aoss:acq', JSON.stringify(o)); }catch(e){} },
-  remove(n){ const o = acqStore.all(); delete o[n]; try{ localStorage.setItem('aoss:acq', JSON.stringify(o)); }catch(e){} },
+  set(n, rec){ const o = acqStore.all(); o[n] = rec; try{ localStorage.setItem('aoss:acq', JSON.stringify(o)); }catch(e){} scheduleAutoSync(); },
+  remove(n){ const o = acqStore.all(); delete o[n]; try{ localStorage.setItem('aoss:acq', JSON.stringify(o)); }catch(e){} scheduleAutoSync(); },
 };
 /* ================= 应用自更新 ================= */
 /* 版本清单托管在 Supabase Storage；发新版只需替换 version.json 与 apk */
 const UPDATE_URL = 'https://mdkvbklgkmwtfscderrc.supabase.co/storage/v1/object/public/app/version.json';
 const CANON_URL = 'https://mdkvbklgkmwtfscderrc.supabase.co/functions/v1/gh-oauth/app/';   // 网页版地址：App 内分享用
-const upd = { state:'idle', info:null, path:'', got:0, total:0, msg:'' };
+const upd = { state:'idle', info:null, path:'', got:0, total:0, msg:'', verify:'skip', shaActual:'' };
 
 function openUpdSheet(){
   $('#updSheet').classList.add('open');
@@ -2565,13 +2665,28 @@ function renderUpd(){
   const cur = NATIVE ? ('当前 v' + (window.OssRankNative.appVersionName() || '')) : '';
 
   let acts = '';
-  if (u.state === 'found')       acts = '<button class="btn primary" data-upd="download">下载更新</button>';
+  if (u.state === 'found')       acts = '<button class="btn primary" data-upd="download">下载更新</button><button class="btn ghost" data-upd="log">更新日志</button>';
   else if (u.state === 'downloading') acts = '<button class="btn ghost" data-upd="cancel">取消</button>';
   else if (u.state === 'paused') acts = '<button class="btn primary" data-upd="resume">继续</button><button class="btn ghost" data-upd="cancel">取消</button>';
-  else if (u.state === 'done')   acts = '<button class="btn primary" data-upd="install">立即安装</button>';
+  else if (u.state === 'done'){
+    if (u.verify === 'fail')
+      acts = '<button class="btn primary" data-upd="download">重新下载</button>';   // 校验不过：不给装
+    else if (u.verify === 'pending')
+      acts = '<button class="btn primary" data-upd="install" disabled>校验中…</button>';
+    else
+      acts = '<button class="btn primary" data-upd="install">立即安装</button>';
+  }
   else if (u.state === 'error')  acts = '<button class="btn" data-upd="retry">重试</button>';
   else if (u.state === 'browser') acts = '';
   else if (u.state === 'latest') acts = '';
+
+  const want = ((u.info && u.info.sha256) || '').toLowerCase();
+  const vrow = (u.state === 'done' && want) ? (()=>{
+    if (u.verify === 'pending')  return '<div class="upd-verify"><span class="vk">◍</span><span>正在校验安装包完整性（SHA-256）…</span></div>';
+    if (u.verify === 'ok')       return '<div class="upd-verify ok"><span class="vk">✓</span><span>完整性校验通过 · SHA-256 与发布声明一致</span></div>';
+    if (u.verify === 'fail')     return '<div class="upd-verify fail"><span class="vk">✗</span><span>校验失败：安装包与发布声明不一致，已拦截安装（' + esc((u.shaActual||'').slice(0,12) + '…') + '）。请重新下载，切勿安装。</span></div>';
+    return '';
+  })() : '';
 
   host.innerHTML = `
     <div class="upd-box">
@@ -2581,6 +2696,7 @@ function renderUpd(){
         ${info.size ? `<span class="upd-size">${fmtBytes(info.size)}</span>` : ''}
       </div>
       <div class="upd-msg">${esc(updText())}</div>
+      ${vrow}
       ${showProg ? `<div class="dlp-bar${u.state === 'paused' ? ' paused' : ''}"><i class="dlp-fill" style="width:${u.state==='done'?100:pct}%"></i></div>` : ''}
       ${acts ? `<div class="upd-acts">${acts}</div>` : ''}
     </div>`;
@@ -2639,11 +2755,19 @@ function maybeCheckUpdate(){
   if (Date.now() - updCheckedAt < 3*60*1000) return;
   silentCheckUpdate();
 }
+/* 通知点进来 / 深链直达：直接打开更新面板并真查一次 */
+window.__ossOpenUpdate = function(){
+  try{
+    if (NATIVE) checkUpdate();
+    else { openUpdSheet(); }
+  }catch(e){}
+};
 
 async function checkUpdate(){
   const ub = $('#updCheck'); if (ub) ub.classList.add('spin');
   openUpdSheet();
   upd.state = 'checking'; upd.path = ''; upd.got = 0; upd.total = 0;
+  upd.verify = 'skip'; upd.shaActual = '';
   upd.info = null;
   renderUpd();
 
@@ -2684,11 +2808,232 @@ function updDownload(){
     dl.owner = '__app__';            // 让 __ossDl 把进度喂给更新弹窗
     dl.fname = name;
     upd.state = 'downloading'; upd.got = 0; upd.total = info.size || 0;
+    upd.verify = 'skip'; upd.shaActual = '';   // 重新下载：清掉上次的校验结果
     renderUpd();
   }catch(e){
     upd.state = 'error'; upd.msg = e.message || '无法开始下载';
     renderUpd();
   }
+}
+
+/* ---- 安装包完整性校验（①）----
+   下载完成后立刻算一遍 SHA-256，和 version.json 里发布时声明的值比对。
+   不一致 ⇒ 传输被篡改 / CDN 串包，直接拦截安装。 */
+async function verifyUpdApk(){
+  const want = ((upd.info && upd.info.sha256) || '').toLowerCase();
+  if (!want){ upd.verify = 'skip'; renderUpd(); return; }
+  upd.verify = 'pending'; upd.shaActual = '';
+  renderUpd();
+  let got = '';
+  try{
+    const r = natJson('fileSha256', upd.path);
+    got = (r && r.sha256 || '').toLowerCase();
+  }catch(e){}
+  if (!got){ upd.verify = 'skip'; renderUpd(); return; }   // 老版本 App 没这个方法：不阻塞升级
+  upd.shaActual = got;
+  upd.verify = (got === want) ? 'ok' : 'fail';
+  renderUpd();
+  if (upd.verify === 'fail') toast('安装包校验失败，已拦截安装，请重新下载');
+}
+
+/* ================= 更新日志（⑤）=================
+   静态内嵌：离线可用、不依赖网络。发新版时在这里加一条即可。 */
+const CHANGELOG = [
+  { v:'2.4', code:15, date:'2026-10-25', items:[
+    '<b>安装包完整性校验</b>：更新包下载完自动比对 SHA-256，不一致直接拦截安装',
+    '<b>云同步</b>：收藏 / 安装记录可同步到 GitHub 私密 Gist，换机不丢数据',
+    '<b>定时检查更新</b>：每天后台静默检查一次，发现新版发通知提醒',
+    '<b>搜索补全</b>：输入时即时匹配历史记录与当前榜单仓库名',
+    '<b>更新日志</b>：本页，可在排序面板和更新弹窗打开',
+  ]},
+  { v:'2.3', code:14, date:'2026-10-24', items:[
+    '全新应用图标「星跃榜」：桌面、通知栏、PWA 全触点统一',
+    '深链支持：github.com 仓库链接可直接选「用 OSS Rank 打开」',
+    '详情页可复制分享链接',
+    '翻译默认关闭；修复底部抽屉阴影外漏',
+  ]},
+  { v:'2.2', code:13, date:'2026-10-24', items:[
+    '更新按钮改用圆圈↑图标，与「刷新」明确区分',
+    '启动 2 秒后自动静默检查更新，有新版图标点亮提醒',
+  ]},
+  { v:'2.1', code:12, date:'2026-10-23', items:[
+    '详情深链 #repo=owner/name，可分享直达任意仓库',
+    '翻译开关状态记忆；搜索历史记录与清空',
+  ]},
+  { v:'2.0', code:11, date:'2026-10-22', items:[
+    '首个发布版本：GitHub 实时榜单（安卓 / Windows / iOS / macOS / Skill / 精选）',
+    '原生下载 + 断点续传 + 下载完成直接安装；APK 元信息检测',
+    '收藏 / 安装记录 / 本地 JSON 备份恢复',
+    'GitHub Token 登录提升接口限额',
+  ]},
+];
+function renderLog(){
+  const host = $('#logBody');
+  if (!host) return;
+  const cur = (NATIVE && window.OssRankNative.appVersionName) ? String(window.OssRankNative.appVersionName() || '') : '';
+  host.innerHTML = CHANGELOG.map(c => `
+    <div class="log-item${c.v === cur ? ' cur' : ''}">
+      <div class="log-head">
+        <b>v${c.v}</b>
+        ${c.v === cur ? '<span class="log-cur">当前版本</span>' : ''}
+        <time>${c.date}</time>
+      </div>
+      <ul>${c.items.map(x => '<li>' + x + '</li>').join('')}</ul>
+    </div>`).join('');
+}
+function openLogSheet(){
+  if ($('#drawer').classList.contains('open')) closeDrawer();
+  if ($('#sortSheet').classList.contains('open')) closeSortSheet();
+  $('#logSheet').classList.add('open');
+  $('#backdrop').classList.add('open');
+  syncBodyLock();
+}
+function closeLogSheet(){
+  $('#logSheet').classList.remove('open');
+  if (!$('#drawer').classList.contains('open') && !$('#sortSheet').classList.contains('open')) $('#backdrop').classList.remove('open');
+  syncBodyLock();
+}
+
+/* ================= 云同步：GitHub 私密 Gist（②）=================
+   复用「GitHub 登录」的 Token；首次上传自动建 secret Gist，之后整体覆盖。
+   注意：细粒度 Token 没有 Gist 权限，403/404 时引导换经典 Token。 */
+const SYNC_KEY = 'aoss:sync', GIST_FILE = 'oss-rank-sync.json';
+function syncCfg(){ try{ return JSON.parse(localStorage.getItem(SYNC_KEY) || '{}') || {}; }catch(e){ return {}; } }
+function syncCfgSet(patch){
+  const c = Object.assign(syncCfg(), patch);
+  try{ localStorage.setItem(SYNC_KEY, JSON.stringify(c)); }catch(e){}
+  return c;
+}
+async function gistApi(method, path, body){
+  const tk = auth.get();
+  if (!tk) { const e = new Error('尚未登录 GitHub，请先在抽屉里登录'); e.userErr = true; throw e; }
+  let res;
+  try{
+    res = await fetch('https://api.github.com' + path, {
+      method,
+      headers: Object.assign({ Accept: 'application/vnd.github+json' }, { Authorization: 'Bearer ' + tk }),
+      body: body ? JSON.stringify(body) : undefined
+    });
+  }catch(e){ throw new Error('网络异常：' + (e.message || e)); }
+  if (res.status === 401) { const e = new Error('Token 已失效，请重新登录'); e.userErr = true; throw e; }
+  if (!res.ok){
+    let m = 'HTTP ' + res.status;
+    try{ m = (await res.json()).message || m; }catch(e){}
+    const e = new Error(m);
+    if (res.status === 403 || res.status === 404) e.gistNoPerm = true;   // 细粒度 Token 没有 Gist 权限
+    throw e;
+  }
+  return res.status === 204 ? null : await res.json();
+}
+function syncPayload(){
+  return { v:1, app:'oss-rank', t:Date.now(), fav:favStore.all(), acq:acqStore.all() };
+}
+function syncMerge(d){
+  if (!d || typeof d !== 'object' || (!d.fav && !d.acq)) throw new Error('云端数据格式不对');
+  const mergeInto = (store, incoming) => {
+    let n = 0;
+    for (const k of Object.keys(incoming || {})){
+      const inc = incoming[k], cur = store.get ? store.get(k) : store.all()[k];
+      if (!cur || (inc && inc.t || 0) > (cur && cur.t || 0)){ store.set(k, inc); n++; }
+    }
+    return n;
+  };
+  const a = mergeInto(favStore, d.fav), b = mergeInto(acqStore, d.acq);
+  return { fav:a, acq:b };
+}
+function syncMsg(text, cls){
+  const el = $('#syncMsg');
+  if (el){ el.textContent = text; el.className = 'sync-st' + (cls ? ' ' + cls : ''); }
+}
+async function syncUpload(){
+  const cfg = syncCfg();
+  syncMsg('正在上传…');
+  const content = JSON.stringify(syncPayload(), null, 2);
+  let id = cfg.gistId || '';
+  if (!id){
+    const g = await gistApi('POST', '/gists', {
+      description: 'OSS Rank 云同步（收藏 / 安装记录）· 由 App 自动维护',
+      public: false,
+      files: { [GIST_FILE]: { content } }
+    });
+    id = g && g.id;
+    if (!id) throw new Error('创建 Gist 失败');
+    syncCfgSet({ gistId: id });
+  } else {
+    await gistApi('PATCH', '/gists/' + id, { files: { [GIST_FILE]: { content } } });
+  }
+  const nf = Object.keys(favStore.all()).length, na = Object.keys(acqStore.all()).length;
+  syncMsg('已上传：' + nf + ' 条收藏 · ' + na + ' 条安装记录 → Gist ' + id.slice(0, 7) + '…', 'ok');
+  syncCfgSet({ lastAt: Date.now(), lastDir: 'up' });
+  renderSyncState();
+  toast('云同步完成：已上传');
+}
+async function syncDownload(){
+  const cfg = syncCfg();
+  if (!cfg.gistId){ const e = new Error('云端还没有备份，请先「上传到云端」'); e.userErr = true; throw e; }
+  syncMsg('正在从云端恢复…');
+  const g = await gistApi('GET', '/gists/' + cfg.gistId);
+  const f = g && g.files && g.files[GIST_FILE];
+  if (!f || !f.content) throw new Error('云端没有同步数据（文件缺失）');
+  let d;
+  try{ d = JSON.parse(f.content); }catch(e){ throw new Error('云端数据不是有效 JSON'); }
+  const r = syncMerge(d);
+  syncMsg('已恢复：收藏 +' + r.fav + ' · 安装记录 +' + r.acq, 'ok');
+  syncCfgSet({ lastAt: Date.now(), lastDir: 'down' });
+  renderSyncState();
+  toast('云同步完成：已恢复');
+  if (state.src === 'fav') renderFav();
+  else if (state.src === 'inst') renderInst();
+}
+let syncBusy = false;
+async function runSync(which){
+  if (syncBusy) return;
+  syncBusy = true;
+  try{
+    if (which === 'up') await syncUpload(); else await syncDownload();
+  }catch(e){
+    let m = e.message || '同步失败';
+    if (e.gistNoPerm) m = '当前 Token 无 Gist 权限（细粒度 Token 不支持 Gist）。请换一个勾选 gist 权限的经典 Token。';
+    syncMsg(m, 'err');
+    toast('云同步失败');
+  }finally{ syncBusy = false; }
+}
+/* 自动同步：收藏 / 安装记录变化后 30 秒静默上传（防抖；失败不打扰用户，下次再试） */
+let autoSyncTimer = null;
+function scheduleAutoSync(){
+  if (!syncCfg().auto) return;
+  clearTimeout(autoSyncTimer);
+  autoSyncTimer = setTimeout(() => {
+    if (!auth.get()) return;                       // 没登录就算了
+    if (syncBusy) return;
+    syncUpload().catch(() => {});                  // 静默失败
+  }, 30 * 1000);
+}
+function renderSyncState(){
+  const cfg = syncCfg();
+  const auto = $('#syncAuto');
+  if (auto) auto.checked = !!cfg.auto;
+  if (cfg.lastAt){
+    const t = new Date(cfg.lastAt).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    syncMsg((cfg.lastDir === 'down' ? '上次：从云端恢复' : '上次：已上传') + ' · ' + t + (cfg.gistId ? ' · Gist ' + cfg.gistId.slice(0, 7) + '…' : ''), 'ok');
+  } else if (cfg.gistId){
+    syncMsg('已关联 Gist ' + cfg.gistId.slice(0, 7) + '…（还没同步过）');
+  } else {
+    syncMsg('');
+  }
+}
+function openSyncSheet(){
+  if ($('#drawer').classList.contains('open')) closeDrawer();
+  if ($('#sortSheet').classList.contains('open')) closeSortSheet();
+  renderSyncState();
+  $('#syncSheet').classList.add('open');
+  $('#backdrop').classList.add('open');
+  syncBodyLock();
+}
+function closeSyncSheet(){
+  $('#syncSheet').classList.remove('open');
+  if (!$('#drawer').classList.contains('open') && !$('#sortSheet').classList.contains('open')) $('#backdrop').classList.remove('open');
+  syncBodyLock();
 }
 
 /* ---- 原生查询：APK 信息 / 是否已安装 / 文件是否还在 ---- */
@@ -3583,8 +3928,8 @@ window.__ossDl = function(o){
   if (dl.owner === '__app__'){
     if (st === 'progress'){ upd.state='downloading'; upd.got=o.got||0; if (o.total>0) upd.total=o.total; renderUpd(); return; }
     if (st === 'paused'){ upd.state='paused'; if (o.got) upd.got=o.got; renderUpd(); return; }
-    if (st === 'idle'){ upd.state='found'; upd.got=0; renderUpd(); toast('已取消更新下载'); return; }
-    if (st === 'done'){ upd.state='done'; upd.path=o.path||''; upd.got=upd.total||upd.got; renderUpd(); toast('更新包已下载，点「立即安装」'); return; }
+    if (st === 'idle'){ upd.state='found'; upd.got=0; upd.verify='skip'; renderUpd(); toast('已取消更新下载'); return; }
+    if (st === 'done'){ upd.state='done'; upd.path=o.path||''; upd.got=upd.total||upd.got; renderUpd(); toast('更新包已下载，正在校验完整性'); verifyUpdApk(); return; }
     if (st === 'error'){ upd.state='error'; upd.msg=o.msg||''; renderUpd(); return; }
     return;
   }
@@ -3750,8 +4095,8 @@ const favStore = {
     o[n] = {c:cat||'其他', t:Date.now(), it:{n:it.n, s:it.s, l:it.l, p:it.p, a:it.a, d:it.d, z:it.z, u:it.u}};
     try{ localStorage.setItem('aoss:fav', JSON.stringify(o)); }catch(e){}
   },
-  set(n, rec){ const o = favStore.all(); o[n] = rec; try{ localStorage.setItem('aoss:fav', JSON.stringify(o)); }catch(e){} },
-  remove(n){ const o = favStore.all(); delete o[n]; try{ localStorage.setItem('aoss:fav', JSON.stringify(o)); }catch(e){} },
+  set(n, rec){ const o = favStore.all(); o[n] = rec; try{ localStorage.setItem('aoss:fav', JSON.stringify(o)); }catch(e){} scheduleAutoSync(); },
+  remove(n){ const o = favStore.all(); delete o[n]; try{ localStorage.setItem('aoss:fav', JSON.stringify(o)); }catch(e){} scheduleAutoSync(); },
   toggle(n, cat, it){
     if (favStore.has(n)){ favStore.remove(n); return false; }
     favStore.add(n, cat, it); return true;
@@ -4081,6 +4426,9 @@ window.__ossBack = function(){
     if ($('#sortSheet').classList.contains('open')){ closeSortSheet(); return true; }
     if ($('#ghSheet').classList.contains('open')){ closeGhSheet(); return true; }
     if ($('#ctxSheet').classList.contains('open')){ closeCtx(); return true; }
+    if ($('#updSheet').classList.contains('open')){ closeUpdSheet(); return true; }
+    if ($('#syncSheet').classList.contains('open')){ closeSyncSheet(); return true; }
+    if ($('#logSheet').classList.contains('open')){ closeLogSheet(); return true; }
   }catch(e){}
   return false;
 };
@@ -4452,6 +4800,8 @@ function bindUI(){
   });
   $('#exportBtn').addEventListener('click', ()=>{ exportMarkdown(); closeSortSheet(); });
   $('#backupBtn').addEventListener('click', ()=>{ exportBackup(); closeSortSheet(); });
+  $('#syncBtn').addEventListener('click', openSyncSheet);
+  $('#logBtn').addEventListener('click', ()=>{ renderLog(); openLogSheet(); });
   /* ---- GitHub 登录 ---- */
   /* ---- 应用更新 ---- */
   $('#updCheck').addEventListener('click', checkUpdate);
@@ -4461,11 +4811,13 @@ function bindUI(){
     if (!b) return;
     const act = b.dataset.upd;
     if (act === 'download' || act === 'retry') updDownload();
+    else if (act === 'log'){ renderLog(); openLogSheet(); }
     else if (act === 'cancel'){
       try{ window.OssRankNative.cancelDownload(); }catch(err){}
-      upd.state = 'found'; upd.got = 0; renderUpd();
+      upd.state = 'found'; upd.got = 0; upd.verify = 'skip'; renderUpd();
     }
     else if (act === 'install'){
+      if (upd.verify === 'fail'){ toast('安装包校验失败，已拦截安装'); return; }   // 双保险：事件层再拦一次
       if (upd.path && window.OssRankNative) window.OssRankNative.install(upd.path);
       else toast('找不到更新包');
     }
@@ -4490,6 +4842,16 @@ function bindUI(){
     e.target.value = '';
     closeSortSheet();
   });
+  /* 云同步面板 */
+  $('#syncClose').addEventListener('click', closeSyncSheet);
+  $('#syncUp').addEventListener('click', ()=>runSync('up'));
+  $('#syncDown').addEventListener('click', ()=>runSync('down'));
+  $('#syncAuto').addEventListener('change', e=>{
+    syncCfgSet({ auto: e.target.checked });
+    if (e.target.checked){ scheduleAutoSync(); toast('自动同步已开启：数据变化后自动上传'); }
+  });
+  /* 更新日志面板 */
+  $('#logClose').addEventListener('click', closeLogSheet);
   $('#refresh').addEventListener('click', e=>{
     const btn = e.currentTarget;
     btn.classList.add('spin'); btn.disabled = true;
@@ -4511,6 +4873,8 @@ function bindUI(){
     else if ($('#sortSheet').classList.contains('open')) closeSortSheet();
     else if ($('#ghSheet').classList.contains('open')) closeGhSheet();
     else if ($('#updSheet').classList.contains('open')) closeUpdSheet();
+    else if ($('#syncSheet').classList.contains('open')) closeSyncSheet();
+    else if ($('#logSheet').classList.contains('open')) closeLogSheet();
     else if ($('#ctxSheet').classList.contains('open')) closeCtx();
   });
   $('#drawerClose').addEventListener('click', closeDrawer);

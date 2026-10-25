@@ -52,6 +52,25 @@ git push -u origin main
 
 ### 发版步骤
 
+0. **构建并计算 SHA-256**（v2.4 起更新包会被完整性校验，漏了这步 App 会拦截安装）：
+
+   ```bash
+   gradle assembleRelease
+   cp app/build/outputs/apk/release/app-release.apk OSSRank-vX.Y.apk
+   sha256sum OSSRank-vX.Y.apk     # 记下哈希，写进 version.json 的 sha256 字段
+   # APK 体积（字节数）也要写进 version.json 的 size 字段：stat -c %s OSSRank-vX.Y.apk
+   ```
+
+   `version.json` 完整字段示例：
+
+   ```json
+   {"versionCode":15, "versionName":"2.4", "file":"OSSRank-v2.4.apk",
+    "size":1751110, "url":"https://<项目>.supabase.co/storage/v1/object/public/app/OSSRank-v2.4.apk",
+    "sha256":"<sha256sum 的输出>", "notes":"一句话更新说明"}
+   ```
+
+   旧版 App（< 2.4）不认识 sha256 字段会自动忽略，兼容无害。
+
 1. **临时开启写入**（Supabase Dashboard → SQL Editor 执行）：
 
    ```sql

@@ -55,6 +55,7 @@ import java.util.zip.ZipFile;
 public class MainActivity extends Activity {
 
     public static final String EXTRA_INSTALL = "install_path";
+    public static final String EXTRA_OPEN_UPDATE = "open_update";   // 通知点进来：直接打开更新面板
 
     private static final String HOST = "appassets.androidplatform.net";
     private static final String START_URL = "https://" + HOST + "/assets/index.html";
@@ -92,6 +93,7 @@ public class MainActivity extends Activity {
         askNotificationPermission();
         handleInstall(getIntent());
         handleView(getIntent());
+        handleOpenUpdate(getIntent());
     }
 
     /* ---------------- 沉浸式 ---------------- */
@@ -371,6 +373,14 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** 更新提醒通知点进来：页面就绪后自动打开「应用更新」面板 */
+    private void handleOpenUpdate(Intent it) {
+        if (it == null || !it.getBooleanExtra(EXTRA_OPEN_UPDATE, false)) return;
+        it.removeExtra(EXTRA_OPEN_UPDATE);
+        if (web != null) web.postDelayed(() ->
+                eval("window.__ossOpenUpdate&&window.__ossOpenUpdate()"), 600);
+    }
+
     /* ---------------- 分享链接：github.com/owner/repo 直接用 App 打开 ---------------- */
 
     private void handleView(Intent it) {
@@ -406,6 +416,7 @@ public class MainActivity extends Activity {
         setIntent(intent);
         handleInstall(intent);
         handleView(intent);
+        handleOpenUpdate(intent);
     }
 
     @Override
@@ -717,6 +728,29 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public boolean fileExists(String path) {
             try { return path != null && new File(path).exists(); } catch (Throwable e) { return false; }
+        }
+
+        /** 计算文件 SHA-256：更新包下载完先校验再允许安装（version.json 里声明了发布时的值） */
+        @JavascriptInterface
+        public String fileSha256(String path) {
+            try {
+                if (path == null || path.isEmpty()) return "";
+                File f = new File(path);
+                if (!f.isFile()) return "";
+                MessageDigest md = MessageDigest.getInstance("SHA-256");
+                try (java.io.InputStream in = new java.io.FileInputStream(f)) {
+                    byte[] buf = new byte[256 * 1024];
+                    int n;
+                    while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+                }
+                byte[] d = md.digest();
+                StringBuilder sb = new StringBuilder();
+                for (byte x : d) sb.append(String.format(Locale.US, "%02x", x));
+                org.json.JSONObject o = new org.json.JSONObject();
+                o.put("sha256", sb.toString());
+                o.put("size", f.length());
+                return o.toString();
+            } catch (Throwable e) { return ""; }
         }
 
         @JavascriptInterface

@@ -7,7 +7,8 @@ import android.os.Build;
 
 public class App extends Application {
 
-    public static final String CH_ID = "ossrank_dl";
+    public static final String CH_ID = "ossrank_dl";     // 下载进度（低优先级，无声音）
+    public static final String CH_UPD = "ossrank_upd";   // 有新版本提醒（默认优先级，会响）
 
     @Override
     public void onCreate() {
@@ -21,7 +22,14 @@ public class App extends Application {
                 ch.setShowBadge(false);
                 ch.setSound(null, null);
                 nm.createNotificationChannel(ch);
+
+                NotificationChannel up = new NotificationChannel(
+                        CH_UPD, "新版本提醒", NotificationManager.IMPORTANCE_DEFAULT);
+                up.setDescription("每天后台检查一次，发现新版本时提醒");
+                nm.createNotificationChannel(up);
             }
         }
+        // 每天一次的后台更新检查（重复调用只是替换闹钟）
+        UpdateClock.schedule(this);
     }
 }
