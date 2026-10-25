@@ -175,6 +175,7 @@ svg.svgi{display:block;flex:none}
 .d-item .tx b{display:block;font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.3px}
 .d-item .tx small{display:block;font-size:10.5px;color:var(--faint);margin-top:1px}
 .d-item .ck{display:flex;align-items:center;color:var(--accent);opacity:0;transition:opacity .15s}
+.d-item .ck:empty{display:none}
 .d-item .ck svg{width:13px;height:13px}
 .d-item:hover{background:var(--surface);color:var(--text)}
 .d-item:active{transform:scale(.98)}
@@ -1034,9 +1035,9 @@ mark.kw{background:var(--accent-soft);color:var(--accent);border-radius:3px;padd
 </aside>
 
 <!-- 排序 + 显示小抽屉（底部滑入） -->
-<div class="sheet" id="sortSheet" role="listbox" aria-label="排序与显示">
+<div class="sheet" id="sortSheet" role="listbox" aria-label="排序">
   <div class="d-head">
-    <span class="d-title">排序 · 显示</span>
+    <span class="d-title">排序</span>
     <button class="d-close" id="sortSheetClose" title="关闭"><svg class="svgi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   </div>
   <div class="d-group">排序</div>
@@ -1183,9 +1184,11 @@ mark.kw{background:var(--accent-soft);color:var(--accent);border-radius:3px;padd
       </div>
       <p class="sync-st" id="syncMsg"></p>
       <div class="sync-help">
-        Token 复用「GitHub 登录」里保存的 Token（只存本机）。注意：<b>细粒度 Token 无法访问 Gist</b>，若报 403/404，请到
+        Token 复用「GitHub 登录」里保存的 Token（只存本机）。<br>
+        注意：<b>细粒度 Token 无法访问 Gist</b>，若报 403/404，请到
         <a href="https://github.com/settings/tokens" target="_blank" rel="noopener">Settings → Developer settings → Personal access tokens (classic)</a>
-        新建一个只勾 <b>gist</b> 权限的经典 Token。Gist 为私密（secret），仅持 Token 者可读写。
+        新建一个只勾 <b>gist</b> 权限的经典 Token。<br>
+        Gist 为私密（secret），仅持 Token 者可读写。
       </div>
     </div>
   </div>
@@ -3032,6 +3035,9 @@ async function verifyUpdApk(){
 /* ================= 更新日志（⑤）=================
    静态内嵌：离线可用、不依赖网络。发新版时在这里加一条即可。 */
 const CHANGELOG = [
+  { v:'2.4.5', code:20, date:'2026-10-25', items:[
+    '<b>视觉修缮</b>：排序面板标题更正、云同步说明分段排版、空勾选位隐藏等零散错漏清理',
+  ]},
   { v:'2.4.4', code:19, date:'2026-10-25', items:[
     '<b>界面重组</b>：外观 / 数据 / 关于 汇入独立「设置」面板（排序面板 → 设置），列表底部更清爽',
   ]},
@@ -3051,7 +3057,7 @@ const CHANGELOG = [
     '<b>云同步</b>：收藏 / 安装记录可同步到 GitHub 私密 Gist，换机不丢数据',
     '<b>定时检查更新</b>：每天后台静默检查一次，发现新版发通知提醒',
     '<b>搜索补全</b>：输入时即时匹配历史记录与当前榜单仓库名',
-    '<b>更新日志</b>：本页，可在排序面板和更新弹窗打开',
+    '<b>更新日志</b>：本页，可在设置面板和更新弹窗打开',
   ]},
   { v:'2.3', code:14, date:'2026-10-24', items:[
     '全新应用图标「星跃榜」：桌面、通知栏、PWA 全触点统一',
