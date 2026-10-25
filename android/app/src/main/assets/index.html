@@ -817,6 +817,43 @@ button.lnk{font:inherit;cursor:pointer;border:0;text-align:left}
 .upd-verify.fail{color:var(--danger);border-color:var(--danger)}
 .upd-verify .vk{flex:none;font-weight:700}
 
+/* ---------- 反馈 · 报 Bug 卡片 ---------- */
+/* 注意：本卡片按需求「点空白不关闭，仅右上角 ✕ 可关」，遮罩不绑关闭事件 */
+.fb-bd{position:fixed;inset:0;z-index:110;background:rgba(0,0,0,.62);backdrop-filter:blur(6px);
+  opacity:0;pointer-events:none;transition:opacity .2s}
+.fb-bd.open{opacity:1;pointer-events:auto}
+.fb-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.97);z-index:111;
+  width:min(92vw,420px);max-height:86vh;overflow-y:auto;
+  background:var(--surface2);border:1px solid var(--line2);border-radius:18px;
+  box-shadow:0 28px 80px rgba(0,0,0,.6);padding:20px 20px 18px;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+.fb-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.fb-modal .fb-x{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:10px;
+  border:1px solid var(--line2);background:var(--surface);color:var(--dim);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:15px}
+.fb-modal .fb-x:active{transform:scale(.94)}
+.fb-title{font-family:var(--disp);font-size:18px;letter-spacing:.4px;margin-bottom:2px}
+.fb-sub{font-size:11.5px;color:var(--faint);margin-bottom:14px}
+.fb-lab{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;color:var(--faint);margin:12px 0 6px;text-transform:uppercase}
+.fb-in{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line2);
+  background:var(--surface);color:var(--text);font-size:13px;outline:none;
+  transition:border-color .15s,box-shadow .15s}
+.fb-in:focus{border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
+textarea.fb-in{min-height:110px;resize:vertical;line-height:1.7;font-family:inherit}
+.fb-shots{display:flex;gap:8px;flex-wrap:wrap}
+.fb-shot{position:relative;width:76px;height:76px;border-radius:10px;overflow:hidden;border:1px solid var(--line2)}
+.fb-shot img{width:100%;height:100%;object-fit:cover;display:block}
+.fb-shot .rm{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;
+  background:rgba(0,0,0,.72);color:#fff;border:0;font-size:12px;line-height:1;cursor:pointer}
+.fb-add{width:76px;height:76px;border-radius:10px;border:1.5px dashed var(--line2);
+  background:none;color:var(--faint);font-size:26px;cursor:pointer;line-height:1}
+.fb-add:active{border-color:var(--accent-line);color:var(--accent)}
+.fb-send{width:100%;margin-top:16px;justify-content:center;padding:13px;font-size:13.5px;
+  border-radius:11px;border-color:transparent;background:var(--accent);color:var(--on-accent);font-weight:700}
+.fb-send:disabled{opacity:.55}
+.fb-foot{font-size:10.5px;color:var(--faint);line-height:1.7;margin-top:10px}
+.fb-err{font-size:11.5px;color:var(--danger);min-height:15px;margin-top:8px}
+
 /* ---------- 应用更新按钮（有更新时高亮） ---------- */
 #updCheck{position:relative;transition:background .18s,color .18s,border-color .18s}
 #updCheck.has-upd{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
@@ -949,6 +986,11 @@ mark.kw{background:var(--accent-soft);color:var(--accent);border-radius:3px;padd
     <span class="ic" data-ic="download"></span><span class="tx"><b>安装记录</b><small>本机已获取 · 版本与备注管理</small></span><span class="ck" data-ck="1"></span>
   </button>
   <div class="d-group">账号</div>
+  <button class="d-item" id="fbEntry" role="button">
+    <span class="ic" data-ic="info"></span>
+    <span class="tx"><b>反馈 · 报 Bug</b><small>直达开发者邮箱 · 可附截图（最多 6 张）</small></span>
+    <span class="ck"></span>
+  </button>
   <button class="d-item" id="ghEntry" role="button" aria-haspopup="dialog">
     <span class="ic" data-ic="github"></span>
     <span class="tx"><b id="ghEntryTitle">GitHub 登录</b><small id="ghEntrySub">登录后搜索 30 次/分 · 接口 5000 次/时</small></span>
@@ -1125,6 +1167,34 @@ mark.kw{background:var(--accent-soft);color:var(--accent);border-radius:3px;padd
 
 <!-- 轻提示（导出复制等反馈） -->
 <div class="toast" id="toast" role="status"></div>
+
+<!-- 反馈 · 报 Bug（点空白不关闭，仅右上角 ✕ 可关） -->
+<div class="fb-bd" id="fbBd"></div>
+<div class="fb-modal" id="fbModal" role="dialog" aria-modal="true" aria-label="反馈与报 Bug">
+  <button class="fb-x" id="fbClose" title="关闭">✕</button>
+  <div class="fb-title">反馈 · 报 Bug</div>
+  <div class="fb-sub">直接发到开发者邮箱，看到就会处理</div>
+  <label class="fb-lab" for="fbEmail">你的邮箱（必填，方便回复）</label>
+  <input class="fb-in" id="fbEmail" type="email" inputmode="email" autocomplete="email"
+         placeholder="you@example.com" spellcheck="false" autocapitalize="off">
+  <label class="fb-lab" for="fbText">反馈内容（必填）</label>
+  <textarea class="fb-in" id="fbText" placeholder="遇到了什么问题？做了什么操作？如果能写清 App 版本和机型，修起来更快"></textarea>
+  <label class="fb-lab">添加图片（最多 6 张，自动压缩）</label>
+  <div class="fb-shots" id="fbShots">
+    <button class="fb-add" id="fbAdd" type="button" title="添加图片">＋</button>
+  </div>
+  <input type="file" id="fbFile" accept="image/*" multiple hidden>
+  <p class="fb-err" id="fbErr"></p>
+  <button class="btn fb-send" id="fbSend">发送反馈</button>
+  <div class="fb-foot">内容与图片将发送至开发者邮箱；不会上传到任何公开场合。若提示发送失败，请检查网络后重试。</div>
+  <form id="fbForm" action="https://formsubmit.co/tennbullock@gmail.com" method="POST"
+        enctype="multipart/form-data" target="fbFrame" hidden>
+    <input type="hidden" name="_captcha" value="false">
+    <input type="hidden" name="_template" value="table">
+    <input type="hidden" name="_subject" value="OSS Rank 用户反馈">
+  </form>
+  <iframe name="fbFrame" hidden></iframe>
+</div>
 
 <script>
 /* ================= 数据 ================= */
@@ -2894,6 +2964,13 @@ async function verifyUpdApk(){
 /* ================= 更新日志（⑤）=================
    静态内嵌：离线可用、不依赖网络。发新版时在这里加一条即可。 */
 const CHANGELOG = [
+  { v:'2.4.2', code:17, date:'2026-10-25', items:[
+    '<b>反馈 · 报 Bug</b>：抽屉新入口，卡片直达开发者邮箱，可附最多 6 张截图',
+  ]},
+  { v:'2.4.1', code:16, date:'2026-10-25', items:[
+    '<b>修复</b>：收藏 / 安装记录在存储空间不足时静默丢失的问题（写入失败现在会自动清理缓存重试并明确提示）',
+    '榜单页缓存加容量上限，杜绝本机存储被缓存吃满',
+  ]},
   { v:'2.4', code:15, date:'2026-10-25', items:[
     '<b>安装包完整性校验</b>：更新包下载完自动比对 SHA-256，不一致直接拦截安装',
     '<b>云同步</b>：收藏 / 安装记录可同步到 GitHub 私密 Gist，换机不丢数据',
@@ -3089,6 +3166,154 @@ function closeSyncSheet(){
   $('#syncSheet').classList.remove('open');
   if (!$('#drawer').classList.contains('open') && !$('#sortSheet').classList.contains('open')) $('#backdrop').classList.remove('open');
   syncBodyLock();
+}
+
+/* ================= 反馈 · 报 Bug（邮件直达，③）=================
+   FormSubmit.co 免注册转发：multipart 提交（隐藏 iframe），文字入正文、图片作附件。
+   按需求：卡片点空白不关闭，仅右上角 ✕（或发送成功后）关闭。 */
+const FB_EMAIL = 'tennbullock@gmail.com', FB_MAX_SHOTS = 6;
+let fbShots = [];        // {file, dataUrl}
+let fbSending = false;
+
+function openFb(){
+  if ($('#drawer').classList.contains('open')) closeDrawer();
+  if ($('#sortSheet').classList.contains('open')) closeSortSheet();
+  fbRenderShots();
+  $('#fbBd').classList.add('open');
+  $('#fbModal').classList.add('open');
+  try{ $('#fbEmail').value = localStorage.getItem('aoss:fb:email') || ''; }catch(e){}
+}
+function closeFb(){
+  $('#fbBd').classList.remove('open');
+  $('#fbModal').classList.remove('open');
+}
+function fbErr(msg){ const el = $('#fbErr'); if (el) el.textContent = msg || ''; }
+/* 压缩：最长边 1600px、JPEG 0.82，单张控制在几百 KB，6 张稳稳低于附件上限 */
+function fbCompress(file){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try{
+        const MAX = 1600;
+        const r = Math.min(1, MAX / Math.max(img.width, img.height));
+        const cv = document.createElement('canvas');
+        cv.width = Math.round(img.width * r); cv.height = Math.round(img.height * r);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        cv.toBlob(b => {
+          URL.revokeObjectURL(url);
+          resolve(b || file);
+        }, 'image/jpeg', 0.82);
+      }catch(e){ URL.revokeObjectURL(url); resolve(file); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+function fbRenderShots(){
+  const host = $('#fbShots');
+  if (!host) return;
+  host.innerHTML = '';
+  fbShots.forEach((s, i) => {
+    const d = document.createElement('div');
+    d.className = 'fb-shot';
+    d.innerHTML = `<img alt="截图${i + 1}"><button class="rm" type="button" title="移除">✕</button>`;
+    d.querySelector('img').src = s.dataUrl;
+    d.querySelector('.rm').onclick = () => { fbShots.splice(i, 1); fbRenderShots(); };
+    host.appendChild(d);
+  });
+  if (fbShots.length < FB_MAX_SHOTS){
+    const add = document.createElement('button');
+    add.className = 'fb-add'; add.type = 'button'; add.title = '添加图片';
+    add.id = 'fbAdd';
+    add.textContent = '＋'; add.onclick = () => $('#fbFile').click();
+    host.appendChild(add);
+  }
+}
+async function fbPickFiles(list){
+  for (const f of Array.from(list || [])){
+    if (fbShots.length >= FB_MAX_SHOTS){ toast(`最多 ${FB_MAX_SHOTS} 张图片`); break; }
+    if (!/^image\//.test(f.type)) continue;
+    const blob = await fbCompress(f);
+    const dataUrl = await new Promise(res => {
+      const rd = new FileReader();
+      rd.onload = () => res(String(rd.result || ''));
+      rd.onerror = () => res('');
+      rd.readAsDataURL(blob);
+    });
+    if (dataUrl) fbShots.push({ file: blob, dataUrl });
+  }
+  fbRenderShots();
+}
+function fbSubmit(){
+  if (fbSending) return;
+  const email = ($('#fbEmail').value || '').trim();
+  const text = ($('#fbText').value || '').trim();
+  fbErr('');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ fbErr('请填写有效的邮箱地址'); return; }
+  if (text.length < 5){ fbErr('反馈内容太短了，请描述清楚一点'); return; }
+  fbSending = true;
+  const btn = $('#fbSend');
+  btn.disabled = true; btn.textContent = '发送中…';
+  try{
+    const form = $('#fbForm');
+    const put = (name, val) => {
+      const inp = document.createElement('input');
+      inp.type = 'hidden'; inp.name = name; inp.value = val;
+      form.appendChild(inp);
+    };
+    put('email', email); put('_replyto', email);
+    put('message', text);
+    put('页面信息', NATIVE ? ('App v' + (window.OssRankNative.appVersionName ? window.OssRankNative.appVersionName() : '?')
+          + ' · Android ' + (window.OssRankNative.sdk ? window.OssRankNative.sdk() : '?'))
+          : '网页版 ' + navigator.userAgent.slice(0, 120));
+    // 图片 → 真附件
+    fbShots.forEach((s, i) => {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.name = 'attachment';
+      try{
+        const dt = new DataTransfer();
+        dt.items.add(new File([s.file], `反馈截图${i + 1}.jpg`, { type: 'image/jpeg' }));
+        inp.files = dt.files;
+      }catch(e){ inp.files = fbShots[i] && fbShots[i].file ? [fbShots[i].file] : []; }
+      form.appendChild(inp);
+    });
+    // 本地留底一份（防通道异常丢失，用户可重发）
+    try{
+      localStorage.setItem('aoss:fb:last', JSON.stringify({ t: Date.now(), email, text,
+        shots: fbShots.length }));
+      localStorage.setItem('aoss:fb:email', email);
+    }catch(e){}
+    // 提交到隐藏 iframe；FormSubmit 处理完会加载其结果页 → 触发 onload
+    const frame = document.querySelector('iframe[name=fbFrame]');
+    let done = false;
+    const finish = ok => {
+      if (done) return;
+      done = true;
+      fbSending = false;
+      btn.disabled = false; btn.textContent = '发送反馈';
+      if (ok){
+        fbShots = []; fbRenderShots();
+        $('#fbText').value = '';
+        closeFb();
+        toast('反馈已发送，感谢！会尽快回复到你邮箱');
+      } else {
+        fbErr('发送似乎没有成功，请检查网络后重试（内容已留底）');
+      }
+    };
+    frame.onload = () => finish(true);
+    setTimeout(() => finish(true), 12000);   // 兜底：12s 无响应也按已提交处理
+    form.submit();
+    // 清掉本次动态添加的字段（附件 + 文本），下次提交重新填
+    setTimeout(() => form.querySelectorAll(
+      'input[name=email],input[name=_replyto],input[name=message],input[name=页面信息],input[name=attachment]'
+    ).forEach(el => el.remove()), 200);
+  }catch(e){
+    fbSending = false;
+    const btn2 = $('#fbSend');
+    btn2.disabled = false; btn2.textContent = '发送反馈';
+    fbErr('发送失败：' + (e.message || e));
+  }
 }
 
 /* ---- 原生查询：APK 信息 / 是否已安装 / 文件是否还在 ---- */
@@ -4906,6 +5131,17 @@ function bindUI(){
     syncCfgSet({ auto: e.target.checked });
     if (e.target.checked){ scheduleAutoSync(); toast('自动同步已开启：数据变化后自动上传'); }
   });
+  /* 反馈 · 报 Bug（点空白不关闭，仅 ✕ 可关——按需求，backdrop 不绑关闭） */
+  $('#fbEntry').addEventListener('click', openFb);
+  $('#fbClose').addEventListener('click', closeFb);
+  $('#fbAdd').addEventListener('click', () => $('#fbFile').click());
+  $('#fbFile').addEventListener('change', e => {
+    fbPickFiles(e.target.files);
+    e.target.value = '';
+  });
+  $('#fbSend').addEventListener('click', fbSubmit);
+  $('#fbText').addEventListener('input', () => fbErr(''));
+  $('#fbEmail').addEventListener('input', () => fbErr(''));
   /* 更新日志面板 */
   $('#logClose').addEventListener('click', closeLogSheet);
   $('#refresh').addEventListener('click', e=>{
