@@ -850,9 +850,31 @@ textarea.fb-in{min-height:110px;resize:vertical;line-height:1.7;font-family:inhe
 .fb-add:active{border-color:var(--accent-line);color:var(--accent)}
 .fb-send{width:100%;margin-top:16px;justify-content:center;padding:13px;font-size:13.5px;
   border-radius:11px;border-color:transparent;background:var(--accent);color:var(--on-accent);font-weight:700}
-.fb-send:disabled{opacity:.55}
+.fb-send:disabled{opacity:.6}
+.fb-send.loading::after{content:'';display:inline-block;width:13px;height:13px;margin-left:9px;
+  border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;
+  animation:fbspin .7s linear infinite;vertical-align:-2px}
+@keyframes fbspin{to{transform:rotate(360deg)}}
 .fb-foot{font-size:10.5px;color:var(--faint);line-height:1.7;margin-top:10px}
 .fb-err{font-size:11.5px;color:var(--danger);min-height:15px;margin-top:8px}
+
+/* ---------- 启动加载动画 ---------- */
+#boot{position:fixed;inset:0;z-index:999;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+  transition:opacity .5s ease}
+#boot.off{opacity:0;pointer-events:none}
+.boot-star{width:84px;height:84px;color:var(--accent);
+  animation:bootbreath 1.6s ease-in-out infinite;
+  filter:drop-shadow(0 0 18px var(--accent-line))}
+.boot-star svg{width:100%;height:100%}
+@keyframes bootbreath{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.12);opacity:1}}
+.boot-name{font-family:var(--disp);font-size:30px;letter-spacing:.5px;margin-top:22px;color:var(--text)}
+.boot-name em{font-style:normal;color:var(--accent)}
+.boot-tag{font-size:12px;color:var(--faint);margin-top:7px;letter-spacing:1px}
+.boot-bar{width:150px;height:3px;border-radius:999px;background:var(--line);margin-top:26px;overflow:hidden}
+.boot-bar i{display:block;height:100%;width:36%;border-radius:999px;background:var(--accent);
+  animation:bootslide 1.15s ease-in-out infinite}
+@keyframes bootslide{0%{transform:translateX(-110%)}100%{transform:translateX(450%)}}
 
 /* ---------- 应用更新按钮（有更新时高亮） ---------- */
 #updCheck{position:relative;transition:background .18s,color .18s,border-color .18s}
@@ -911,6 +933,18 @@ mark.kw{background:var(--accent-soft);color:var(--accent);border-radius:3px;padd
 </style>
 </head>
 <body>
+
+<!-- 启动加载动画：星标呼吸 + 进度条，初始化完成后淡出（3.2s 兜底强制消失） -->
+<div id="boot" aria-hidden="true">
+  <div class="boot-star">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
+      <path d="m12 3.2 2.7 5.5 6.1.9-4.4 4.3 1 6-5.4-2.8-5.4 2.8 1-6-4.4-4.3 6.1-.9L12 3.2z" fill="currentColor"/>
+    </svg>
+  </div>
+  <div class="boot-name">OSS <em>Rank</em></div>
+  <div class="boot-tag">星跃榜 · GitHub 开源软件实时榜单</div>
+  <div class="boot-bar"><i></i></div>
+</div>
 
 <header>
   <div class="hd">
@@ -2964,6 +2998,10 @@ async function verifyUpdApk(){
 /* ================= 更新日志（⑤）=================
    静态内嵌：离线可用、不依赖网络。发新版时在这里加一条即可。 */
 const CHANGELOG = [
+  { v:'2.4.3', code:18, date:'2026-10-25', items:[
+    '<b>修复</b>：反馈卡片无法从相册添加图片（App 壳补上文件选择器支持）',
+    '<b>新增</b>：启动加载动画（星标呼吸 + 进度条）；发送反馈加转圈动画',
+  ]},
   { v:'2.4.2', code:17, date:'2026-10-25', items:[
     '<b>反馈 · 报 Bug</b>：抽屉新入口，卡片直达开发者邮箱，可附最多 6 张截图',
   ]},
@@ -3254,7 +3292,7 @@ function fbSubmit(){
   if (text.length < 5){ fbErr('反馈内容太短了，请描述清楚一点'); return; }
   fbSending = true;
   const btn = $('#fbSend');
-  btn.disabled = true; btn.textContent = '发送中…';
+  btn.disabled = true; btn.textContent = '发送中…'; btn.classList.add('loading');
   try{
     const form = $('#fbForm');
     const put = (name, val) => {
@@ -3291,7 +3329,7 @@ function fbSubmit(){
       if (done) return;
       done = true;
       fbSending = false;
-      btn.disabled = false; btn.textContent = '发送反馈';
+      btn.disabled = false; btn.textContent = '发送反馈'; btn.classList.remove('loading');
       if (ok){
         fbShots = []; fbRenderShots();
         $('#fbText').value = '';
@@ -3311,7 +3349,7 @@ function fbSubmit(){
   }catch(e){
     fbSending = false;
     const btn2 = $('#fbSend');
-    btn2.disabled = false; btn2.textContent = '发送反馈';
+    btn2.disabled = false; btn2.textContent = '发送反馈'; btn2.classList.remove('loading');
     fbErr('发送失败：' + (e.message || e));
   }
 }
@@ -5452,6 +5490,24 @@ if ('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   });
 }
+
+/* ================= 启动加载动画淡出 =================
+   首屏渲染完成（load）后收尾；最少展示 600ms 避免闪屏；3.2s 兜底防卡住 */
+let bootGone = false;
+const bootShownAt = Date.now();
+function hideBoot(){
+  if (bootGone) return;
+  bootGone = true;
+  const el = $('#boot');
+  if (!el) return;
+  const wait = Math.max(0, 600 - (Date.now() - bootShownAt));
+  setTimeout(() => {
+    el.classList.add('off');
+    setTimeout(() => { try{ el.remove(); }catch(e){} }, 560);
+  }, wait);
+}
+window.addEventListener('load', hideBoot);
+setTimeout(hideBoot, 3200);
 </script>
 </body>
 </html>
