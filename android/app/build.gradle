@@ -10,8 +10,8 @@ android {
         applicationId "com.ossrank.app"
         minSdk 24
         targetSdk 34
-        versionCode 16
-        versionName "2.4.1"
+        versionCode 19
+        versionName "2.4.4"
     }
 
     signingConfigs {
